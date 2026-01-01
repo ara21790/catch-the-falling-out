@@ -1,0 +1,208 @@
+<!DOCTYPE html>
+<html lang="ku">
+  <head>
+    <meta charset="UTF-8" />
+    <title>Catch the Falling Object</title>
+    <style>
+      body {
+        margin: 0;
+        font-family: Arial, sans-serif;
+        background: radial-gradient(circle at center, #0b0c10 0%, #1a1a2e 80%);
+        color: #00ffe5;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        height: 100vh;
+      }
+
+      #gameCanvas {
+        background: linear-gradient(#111, #222);
+        border: 2px solid #00ffe5;
+        border-radius: 12px;
+        margin-top: 20px;
+        touch-action: none;
+      }
+
+      #info {
+        margin-top: 10px;
+        font-size: 18px;
+      }
+
+      button {
+        margin-top: 15px;
+        padding: 10px 20px;
+        font-weight: bold;
+        border-radius: 8px;
+        border: none;
+        cursor: pointer;
+        background: linear-gradient(90deg, #00ffe5, #0077ff);
+        color: black;
+      }
+      button:hover {
+        transform: scale(1.05);
+      }
+    </style>
+  </head>
+  <body>
+    <h2>Catch the Falling Object</h2>
+    <canvas id="gameCanvas" width="500" height="400"></canvas>
+    <div id="info">
+      Score: <span id="score">0</span> | Level: <span id="level">1</span>
+    </div>
+    <button id="restart">Restart Game</button>
+
+    <script>
+      //canvas yarmatidara bo wenae jullaw yare la (js)
+      const canvas = document.getElementById("gameCanvas");
+      const ctx = canvas.getContext("2d"); //bo wena keshan bakardet
+      const scoreEl = document.getElementById("score"); //dyari krdni score
+      const levelEl = document.getElementById("level"); //dyari krdni level
+      const restartBtn = document.getElementById("restart"); //button dast pe krdni yari
+
+      let score = 0;
+      let level = 1;
+      let player = { x: 220, y: 360, width: 80, height: 15 }; //player wata awae ka eyma aejullenin
+      let objects = [];
+      let baseSpeed = 1.3; //xerai topakan
+      let objectSpeed = baseSpeed;
+      let objectSize = 25; //qabara
+      let gameOver = false;
+
+      // drag player
+      //bo awa bakar det agar bet w click lasar player bkain atwanin bebaina lae rast w chap
+      let isDragging = false;
+      let dragOffsetX = 0;
+
+      canvas.addEventListener("mousedown", (e) => {
+        if (
+          //offset jullana bo lakan
+          e.offsetX >= player.x &&
+          e.offsetX <= player.x + player.width &&
+          e.offsetY >= player.y &&
+          e.offsetY <= player.y + player.height
+        ) {
+          isDragging = true;
+          dragOffsetX = e.offsetX - player.x;
+        }
+      });
+
+      canvas.addEventListener("mousemove", (e) => {
+        if (isDragging) {
+          player.x = e.offsetX - dragOffsetX; //shweni player w mouse yaksan dakain ba yak
+          if (player.x < 0) player.x = 0;
+          if (player.x + player.width > canvas.width)
+            player.x = canvas.width - player.width;
+        }
+      });
+
+      canvas.addEventListener("mouseup", () => {
+        isDragging = false; //agar dasm la brd bwastet
+      });
+      canvas.addEventListener("mouseleave", () => {
+        isDragging = false; //agar mouse dar chu  la canvas awa bwastet
+      });
+
+      // spawn objects
+      function spawnObject() {// ama bakar det bo henana xwarawae topakan la canvasaka
+        let spawnChance = 0.02 + (level - 1) * 0.01; //amash 7sabati darkawtni topakana ba pei level agore
+        if (Math.random() < spawnChance) {// zhmarayak drust dakat la baini 0-1 agar bchuktr bet la 0.02 
+                                           // awa object det agar gawratr bet awa object nayat
+          const x = Math.random() * (canvas.width - objectSize);
+          objects.push({ x: x, y: 0, width: objectSize, height: objectSize });
+        }
+      }
+
+      // update game//objectaan aheneta xwarawaw agar bar player kawt awa aw danaya asretawaw namenet
+      function update() {
+        if (gameOver) return;// agar bdoreit yariaka awastet
+
+        for (const obj of objects) {
+          obj.y += objectSpeed;//wa akat objectakan baraw xwarawa bjullen
+        }
+
+        for (let i = objects.length - 1; i >= 0; i--) {
+          const obj = objects[i];
+          if (//amayan bo awaya pet alet agar objectaka bar player kawt awa score zyad bka
+            obj.y + obj.height >= player.y &&
+            obj.y + obj.height <= player.y + player.height + 10 &&
+            obj.x + obj.width / 2 >= player.x &&
+            obj.x + obj.width / 2 <= player.x + player.width
+          ) {
+            score++;
+            scoreEl.textContent = score;//peshan dani score
+            objects.splice(i, 1);//dwae barkawtn object la abret
+
+            // level up every 5 points, max 10 levels
+            let newLevel = Math.min(10, Math.floor(score / 5) + 1);//amayan bo awaya lagal har 5 
+            // scorek levlek barz betawa wa ta level 10 arwat
+            if (newLevel !== level) {
+              level = newLevel;
+              levelEl.textContent = level;
+
+              
+
+             
+              player.width = Math.min(120, 80 + (level - 1) * 5);
+              //bo awa bakar det ka levelik barz bwawa player 5 pexil pan bet
+            }
+          } else if (obj.y > canvas.height) {//amash bo awaya agar object bar player nakawt awa la yareaka bdoreit
+            objects.splice(i, 1);
+            gameOver = true;
+            setTimeout(
+              () =>
+                alert("Game Over! Final score: " + score + ", Level: " + level),
+              50
+            );
+          }
+        }
+
+        spawnObject();
+      }
+
+      // draw game   bo pakkrdnawae shashaka bakar det
+      function draw() {
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+// ctx aw shtana peshan adat ka ajullin lasar shashaka
+        ctx.fillStyle = "#00ffe5";
+        ctx.fillRect(player.x, player.y, player.width, player.height);// ama player range blue
+
+        for (const obj of objects) {
+          ctx.fillStyle = "#ff004c";//object'akana
+          ctx.beginPath();
+          ctx.arc(
+            obj.x + obj.width / 2,
+            obj.y + obj.height / 2,
+            obj.width / 2,
+            0,
+            Math.PI * 2
+          );
+          ctx.fill();
+        }
+      }
+
+      // main loop
+      function loop() {   // ama bo awaya ka function srawa dubara betawa lagal tawaw bwni 
+        update();//awa bw ka katek object bar player kawt score zyad bka w binwse w awana
+        draw();//awa bw ka bo pakkrdnawae shashaka bakar det
+        if (!gameOver) requestAnimationFrame(loop);//awa bw ka lagal doran yariaka bwastet
+      }
+
+      // restart
+      restartBtn.addEventListener("click", () => {
+        score = 0;//amasha lagal click krdn la button shtakan wak saratae le betawa
+        level = 1;
+        objectSpeed = baseSpeed;
+        player.width = 80;
+        scoreEl.textContent = score;
+        levelEl.textContent = level;
+        objects = [];
+        gameOver = false;
+        player.x = 220;
+        loop();
+      });
+
+      loop();
+    </script>
+  </body>
+</html>
